@@ -25,11 +25,28 @@ data class BucketStat(
     val totalMs: Long
 )
 
+/** One fully-denormalized play event, ready to flatten into a CSV row. */
+data class PlayEventExport(
+    val id: Long,
+    val songId: Long,
+    val title: String,
+    val playlist: String,
+    /** All singers for the song, joined with "; " (empty if none assigned). */
+    val singers: String,
+    val listenedMs: Long,
+    val startedAtMs: Long
+)
+
 @Dao
 interface PlayEventDao {
 
+    /** Returns the new row's id so an in-progress listen can be updated later. */
     @Insert
-    suspend fun insert(event: PlayEventEntity)
+    suspend fun insert(event: PlayEventEntity): Long
+
+    /** Grow an existing listen's duration in place (checkpointing) without adding a new play. */
+    @Query("UPDATE play_events SET listenedMs = :listenedMs WHERE id = :id")
+    suspend fun updateListened(id: Long, listenedMs: Long)
 
     @Query("SELECT COALESCE(SUM(listenedMs), 0) FROM play_events WHERE startedAtMs >= :from AND startedAtMs < :to")
     suspend fun totalListenedMs(from: Long, to: Long): Long
@@ -83,4 +100,26 @@ interface PlayEventDao {
 
     @Query("SELECT MIN(startedAtMs) FROM play_events")
     suspend fun firstEventAt(): Long?
+
+    /**
+     * Every play event with its song details, for CSV export.
+     * LEFT JOINs keep events whose song/singers were deleted; GROUP_CONCAT rolls a song's
+     * multiple singers into one cell (default per-row multiplication is collapsed by GROUP BY).
+     */
+    @Query(
+        """SELECT pe.id AS id,
+                  pe.songId AS songId,
+                  COALESCE(s.title, '') AS title,
+                  COALESCE(s.playlist, '') AS playlist,
+                  COALESCE(GROUP_CONCAT(si.name, '; '), '') AS singers,
+                  pe.listenedMs AS listenedMs,
+                  pe.startedAtMs AS startedAtMs
+           FROM play_events pe
+           LEFT JOIN songs s ON s.id = pe.songId
+           LEFT JOIN song_singer ss ON ss.songId = pe.songId
+           LEFT JOIN singers si ON si.id = ss.singerId
+           GROUP BY pe.id
+           ORDER BY pe.startedAtMs"""
+    )
+    suspend fun allForExport(): List<PlayEventExport>
 }

@@ -1,16 +1,21 @@
 package com.sim.lavis.ui
 
+import android.content.ContentResolver
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.sim.lavis.LavisApplication
+import com.sim.lavis.data.CsvExport
 import com.sim.lavis.data.Wrapped
 import com.sim.lavis.data.WrappedPeriod
 import com.sim.lavis.data.WrappedRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class WrappedViewModel(private val wrappedRepository: WrappedRepository) : ViewModel() {
 
@@ -49,6 +54,28 @@ class WrappedViewModel(private val wrappedRepository: WrappedRepository) : ViewM
     fun recompute() {
         viewModelScope.launch {
             _wrapped.value = wrappedRepository.compute(_period.value, _offset.value)
+        }
+    }
+
+    /**
+     * Write the entire play-events log to [uri] as CSV.
+     * DB read + CSV build + file write all happen off the main thread; [onResult] is invoked
+     * back on the main thread with the row count (or null on failure) so the UI can report it.
+     */
+    fun exportCsv(resolver: ContentResolver, uri: Uri, onResult: (Int?) -> Unit) {
+        viewModelScope.launch {
+            val count = withContext(Dispatchers.IO) {
+                try {
+                    val rows = wrappedRepository.exportRows()
+                    val csv = CsvExport.playEvents(rows)
+                    resolver.openOutputStream(uri)?.use { it.write(csv.toByteArray()) }
+                        ?: return@withContext null
+                    rows.size
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            onResult(count)
         }
     }
 

@@ -1,5 +1,8 @@
 package com.sim.lavis.ui.screens
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,7 +18,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import java.time.LocalDate
 import com.sim.lavis.data.Wrapped
 import com.sim.lavis.data.WrappedPeriod
 import com.sim.lavis.ui.WrappedViewModel
@@ -35,13 +40,36 @@ fun WrappedScreen(viewModel: WrappedViewModel) {
     // Refresh when the screen comes back into view (new events may exist).
     LaunchedEffect(Unit) { viewModel.recompute() }
 
+    val context = LocalContext.current
+    // SAF "create document" launcher: the user picks where the CSV goes (no storage permission needed).
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri != null) {
+            viewModel.exportCsv(context.contentResolver, uri) { count ->
+                val msg = if (count != null) "exported $count events to CSV" else "export failed"
+                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
-        PromptHeader("wrapped --stats")
+        Row(modifier = Modifier.fillMaxWidth()) {
+            PromptHeader("wrapped --stats")
+            Text(
+                text = "[export csv]",
+                style = MaterialTheme.typography.labelLarge,
+                color = TermCyan,
+                modifier = Modifier
+                    .padding(start = 12.dp, top = 4.dp)
+                    .clickable { exportLauncher.launch("lavis-history-${LocalDate.now()}.csv") }
+            )
+        }
 
         Row(modifier = Modifier.padding(bottom = 4.dp)) {
             WrappedPeriod.entries.forEach { p ->

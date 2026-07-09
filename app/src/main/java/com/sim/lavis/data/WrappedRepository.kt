@@ -1,6 +1,7 @@
 package com.sim.lavis.data
 
 import com.sim.lavis.data.db.PlayEventDao
+import com.sim.lavis.data.db.PlayEventExport
 import com.sim.lavis.data.db.SingerStat
 import com.sim.lavis.data.db.SongStat
 import java.time.DayOfWeek
@@ -33,6 +34,9 @@ data class Wrapped(
  * offset = 0 is the current (still running) period, 1 is the previous one, etc.
  */
 class WrappedRepository(private val playEventDao: PlayEventDao) {
+
+    /** All play events, denormalized, for CSV export. */
+    suspend fun exportRows(): List<PlayEventExport> = playEventDao.allForExport()
 
     suspend fun compute(period: WrappedPeriod, offset: Int): Wrapped {
         val zone = ZoneId.systemDefault()
