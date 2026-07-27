@@ -38,6 +38,13 @@ android {
     buildFeatures {
         compose = true
     }
+    packaging {
+        jniLibs {
+            // youtubedl-android ships Python/yt-dlp binaries disguised as .so files;
+            // they must be extracted to disk (not run from the APK) to be executable.
+            useLegacyPackaging = true
+        }
+    }
 }
 
 dependencies {
@@ -53,6 +60,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
+    implementation(libs.youtubedl.android)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)

@@ -23,6 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.sim.lavis.playback.PlayerManager
+import com.sim.lavis.ui.screens.DownloadScreen
 import com.sim.lavis.ui.screens.MiniPlayer
 import com.sim.lavis.ui.screens.NowPlayingScreen
 import com.sim.lavis.ui.screens.PlaylistDetailScreen
@@ -37,6 +38,7 @@ private data class Tab(val route: String, val label: String)
 private val tabs = listOf(
     Tab("playlists", "[plst]"),
     Tab("singers", "[sngr]"),
+    Tab("download", "[dnld]"),
     Tab("wrapped", "[wrap]")
 )
 
@@ -45,6 +47,7 @@ fun LavisApp(playerManager: PlayerManager) {
     val navController = rememberNavController()
     val libraryViewModel: LibraryViewModel = viewModel(factory = LibraryViewModel.Factory)
     val wrappedViewModel: WrappedViewModel = viewModel(factory = WrappedViewModel.Factory)
+    val downloadViewModel: DownloadViewModel = viewModel(factory = DownloadViewModel.Factory)
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -89,6 +92,9 @@ fun LavisApp(playerManager: PlayerManager) {
                     playerManager = playerManager,
                     onBack = { navController.popBackStack() }
                 )
+            }
+            composable("download") {
+                DownloadScreen(downloadViewModel)
             }
             composable("wrapped") {
                 WrappedScreen(wrappedViewModel)

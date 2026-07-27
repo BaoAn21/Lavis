@@ -3,6 +3,7 @@ package com.sim.lavis
 import android.app.Application
 import com.sim.lavis.data.MediaScanner
 import com.sim.lavis.data.MusicRepository
+import com.sim.lavis.data.SongDownloader
 import com.sim.lavis.data.WrappedRepository
 import com.sim.lavis.data.db.LavisDatabase
 import com.sim.lavis.playback.PlayerManager
@@ -15,4 +16,5 @@ class LavisApplication : Application() {
     val wrappedRepository by lazy { WrappedRepository(database.playEventDao()) }
     val mediaScanner by lazy { MediaScanner(this, database.songDao()) }
     val playerManager by lazy { PlayerManager(this) }
+    val songDownloader by lazy { SongDownloader(this) }
 }
