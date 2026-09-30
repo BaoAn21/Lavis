@@ -44,8 +44,12 @@ interface PlayEventDao {
     @Insert
     suspend fun insert(event: PlayEventEntity): Long
 
-    /** Grow an existing listen's duration in place (checkpointing) without adding a new play. */
-    @Query("UPDATE play_events SET listenedMs = :listenedMs WHERE id = :id")
+    /**
+     * Grow an existing listen's duration in place (checkpointing) without adding a new play.
+     * MAX() because checkpoints run on a thread pool and may land out of order; an older,
+     * smaller snapshot must never overwrite a newer one.
+     */
+    @Query("UPDATE play_events SET listenedMs = MAX(listenedMs, :listenedMs) WHERE id = :id")
     suspend fun updateListened(id: Long, listenedMs: Long)
 
     @Query("SELECT COALESCE(SUM(listenedMs), 0) FROM play_events WHERE startedAtMs >= :from AND startedAtMs < :to")

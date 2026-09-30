@@ -2,8 +2,9 @@
 <resources>
 
     <style name="Theme.Lavis" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">#0A0C0A</item>
-        <item name="android:statusBarColor">#0A0C0A</item>
-        <item name="android:navigationBarColor">#0A0C0A</item>
+        <!-- Matches the Compose background so there's no flash on launch. -->
+        <item name="android:windowBackground">#0A0A12</item>
+        <item name="android:statusBarColor">#0A0A12</item>
+        <item name="android:navigationBarColor">#0A0A12</item>
     </style>
 </resources>

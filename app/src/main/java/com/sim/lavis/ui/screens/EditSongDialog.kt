@@ -1,42 +1,57 @@
 package com.sim.lavis.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.sim.lavis.data.db.SingerEntity
 import com.sim.lavis.data.db.SongWithSingers
 import com.sim.lavis.ui.LibraryViewModel
-import com.sim.lavis.ui.components.DimText
-import com.sim.lavis.ui.theme.TermAmber
-import com.sim.lavis.ui.theme.TermBlack
-import com.sim.lavis.ui.theme.TermCyan
-import com.sim.lavis.ui.theme.TermGray
-import com.sim.lavis.ui.theme.TermGreenDim
+import com.sim.lavis.ui.components.LavisIcons
+import com.sim.lavis.ui.components.SongCover
+import com.sim.lavis.ui.theme.TextFaint
+import com.sim.lavis.ui.theme.TextMuted
 
 /**
- * Terminal-style metadata editor: rename the song, toggle singers on/off,
- * or create a brand new singer and assign it in one go.
+ * Rename the song, toggle its singers, or create a brand new singer and assign it in one go.
+ * Singer toggles apply immediately; the title is saved with the Save button.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun EditSongDialog(
     songWithSingers: SongWithSingers,
@@ -49,100 +64,133 @@ fun EditSongDialog(
     var newSinger by remember { mutableStateOf("") }
     val assignedIds = songWithSingers.singers.map { it.id }.toSet()
 
+    fun addSinger() {
+        if (newSinger.isNotBlank()) {
+            viewModel.createSingerAndAssign(newSinger, song.id)
+            newSinger = ""
+        }
+    }
+
     Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(TermBlack)
-                .border(1.dp, TermGreenDim)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState())
+        Surface(
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh
         ) {
-            Text(
-                text = "$ edit ${song.fileName}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            DimText("title:", modifier = Modifier.padding(top = 16.dp))
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                modifier = Modifier.fillMaxWidth(),
-                textStyle = MaterialTheme.typography.bodyLarge,
-                colors = terminalFieldColors()
-            )
-
-            DimText("singers: [tap to toggle]", modifier = Modifier.padding(top = 16.dp))
-            Column(modifier = Modifier.heightIn(max = 220.dp).verticalScroll(rememberScrollState())) {
-                if (allSingers.isEmpty()) {
-                    DimText("(no singers yet — create one below)", Modifier.padding(vertical = 8.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SongCover(contentUri = song.contentUri, key = song.title, size = 56.dp)
+                    Column(modifier = Modifier.padding(start = 14.dp)) {
+                        Text("Edit song", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = song.fileName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-                allSingers.forEach { singer ->
-                    val assigned = singer.id in assignedIds
+
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it },
+                    label = { Text("Title") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = lavisFieldColors(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp)
+                )
+
+                Text(
+                    text = "Singers",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
+                )
+                if (allSingers.isEmpty()) {
                     Text(
-                        text = (if (assigned) "[x] " else "[ ] ") + singer.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = if (assigned) TermAmber else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.toggleSinger(song.id, singer.id, assigned) }
-                            .padding(vertical = 6.dp)
+                        "No singers yet — create one below.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted
                     )
                 }
-            }
+                FlowRow(
+                    modifier = Modifier
+                        .heightIn(max = 200.dp)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    allSingers.forEach { singer ->
+                        val assigned = singer.id in assignedIds
+                        FilterChip(
+                            selected = assigned,
+                            onClick = { viewModel.toggleSinger(song.id, singer.id, assigned) },
+                            label = { Text(singer.name) },
+                            leadingIcon = if (assigned) {
+                                { Icon(LavisIcons.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                            } else null,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
 
-            DimText("new singer:", modifier = Modifier.padding(top = 12.dp))
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                 OutlinedTextField(
                     value = newSinger,
                     onValueChange = { newSinger = it },
-                    modifier = Modifier.weight(1f),
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                    colors = terminalFieldColors()
-                )
-                Text(
-                    text = " [+add]",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = TermCyan,
-                    modifier = Modifier.clickable {
-                        if (newSinger.isNotBlank()) {
-                            viewModel.createSingerAndAssign(newSinger, song.id)
-                            newSinger = ""
+                    placeholder = { Text("New singer", color = TextFaint) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    colors = lavisFieldColors(),
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Done
+                    ),
+                    keyboardActions = KeyboardActions(onDone = { addSinger() }),
+                    trailingIcon = {
+                        IconButton(onClick = ::addSinger, enabled = newSinger.isNotBlank()) {
+                            Icon(LavisIcons.Add, contentDescription = "Create and assign singer")
                         }
-                    }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp)
                 )
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                Text(
-                    text = "[cancel]",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = TermGray,
-                    modifier = Modifier.clickable(onClick = onDismiss)
-                )
-                Text(
-                    text = "  [save]",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 24.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Cancel") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = {
                         viewModel.setSongTitle(song.id, title)
                         onDismiss()
-                    }
-                )
+                    }) { Text("Save") }
+                }
             }
         }
     }
 }
 
 @Composable
-fun terminalFieldColors() = OutlinedTextFieldDefaults.colors(
+fun lavisFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor = MaterialTheme.colorScheme.primary,
-    unfocusedBorderColor = TermGreenDim,
-    focusedTextColor = MaterialTheme.colorScheme.primary,
-    unfocusedTextColor = MaterialTheme.colorScheme.primary,
-    cursorColor = MaterialTheme.colorScheme.primary
+    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+    focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedLabelColor = MaterialTheme.colorScheme.primary
 )

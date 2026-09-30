@@ -50,6 +50,11 @@ interface SongDao {
     @Query("SELECT * FROM songs WHERE id = :id")
     suspend fun getById(id: Long): SongEntity?
 
+    /** Unordered; callers re-sort by their own id list. */
+    @Transaction
+    @Query("SELECT * FROM songs WHERE available = 1 AND id IN (:ids)")
+    suspend fun getWithSingers(ids: List<Long>): List<SongWithSingers>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(song: SongEntity): Long
 
