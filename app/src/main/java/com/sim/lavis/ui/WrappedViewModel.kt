@@ -11,6 +11,7 @@ import com.sim.lavis.data.Wrapped
 import com.sim.lavis.data.WrappedPeriod
 import com.sim.lavis.data.WrappedRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,8 +52,12 @@ class WrappedViewModel(private val wrappedRepository: WrappedRepository) : ViewM
         }
     }
 
+    private var computeJob: Job? = null
+
+    /** Cancels any in-flight computation so a slow, older result can't overwrite a newer period. */
     fun recompute() {
-        viewModelScope.launch {
+        computeJob?.cancel()
+        computeJob = viewModelScope.launch {
             _wrapped.value = wrappedRepository.compute(_period.value, _offset.value)
         }
     }
